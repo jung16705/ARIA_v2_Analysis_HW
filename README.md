@@ -43,34 +43,34 @@
     }
 ]
 ```
-## 🛠️ 快速啟動 (Quick Start)
+## 快速啟動 (Quick Start)
 1. Clone 本專案至您的環境 (支援 Windows 本機或 Colab 雲端)。
 2. 將 `env_template` 重新命名為 `.env`，並可依需求微調門檻值。
 3. 若於 Windows 本機環境開發執行，請確保已安裝 `requirements.txt` 內之套件。
 4. 將所需圖資放入專案資料夾內（系統具備 `find_path` 自動遞迴搜尋功能，無需指定絕對路徑）。
 5. 依序執行 `ARIA_v2.ipynb` 即可自動產出地圖與 `terrain_risk_audit.json` 稽核清單。
 
-## ⚖️ 規範符合性 (Compliance)
+## 規範符合性 (Compliance)
 - [x] **Requirement B**: 座標重投影 (B-1)、坡度與距離空間運算 (B-2)。
 - [x] **Requirement C**: 環境變數配置分離 (C-1)、跨環境自適應路徑 (C-2)。
 - [x] **Requirement D**: 結構化 JSON 產出 (D-3)、高品質中文化地圖 (D-4)。
 
 ---
 
-## 🤖 AI 協作與系統診斷日誌 (AI Diagnostic Log)
+## AI 協作與系統診斷日誌 (AI Diagnostic Log)
 本專案在開發過程中，透過與 AI 助理進行深度的 Pair-Programming，成功排除了多項 GIS 空間分析與跨環境部署的重大技術阻礙。以下為核心診斷與修復紀錄：
 
-### 🐛 異常事件一：雲端環境中文字體解析崩潰
+### 異常事件一：雲端環境中文字體解析崩潰
 * **錯誤特徵**：`RuntimeError: Can not load face (unknown file format; error code 0x2)` 以及圖表出現豆腐塊。
 * **AI 診斷**：由於 Linux/Colab 原生缺乏中文字體，程式嘗試從網路下載備援字體時，遭遇開源字體庫網址移轉（引發 404 錯誤），導致 Matplotlib 讀取到非字體格式的 HTML 殘檔而崩潰。
 * **修復方案**：實作「強健型字體引擎」。更新為最新的 Google Notofonts 直連網址，並加入**檔案大小驗證機制 (Size Validation)**。若下載檔案小於 1MB 則自動判定為損毀並清除重載，最終透過 `fontManager.addfont()` 強制註冊，達成 100% 零警告輸出。
 
-### 🐛 異常事件二：空間幾何裁切型態衝突
+### 異常事件二：空間幾何裁切型態衝突
 * **錯誤特徵**：`ValueError: Unsupported geometry type FeatureCollection`。
 * **AI 診斷**：在執行 DEM 網格裁切時，`rioxarray.clip` 函數無法直接解析 GeoPandas 預設封裝的 `FeatureCollection` 物件，引發底層 `rasterio` 引擎型態報錯。
 * **修復方案**：在傳入裁切幾何參數時，於 `county_boundary.geometry` 後方加上 `.values`，將 GeoSeries 成功解構為 rioxarray 可識別的基礎幾何陣列 (Numpy Array)，順利完成 20m 高解析度網格之精準裁切。
 
-### 🐛 異常事件三：視覺化地形色階失真
+### 異常事件三：視覺化地形色階失真
 * **錯誤特徵**：產出的風險地圖中，花蓮縱谷平原區呈現代表水域的「深藍色」，與真實地理認知不符。
 * **AI 診斷**：Matplotlib 的 `terrain` 色帶預設將數值 `0` 映射為藍色（海平面）。由於已過濾掉海域的負值，平原區（接近 0m）被強制分配到色階最底層的藍色區段。
 * **修復方案**：透過調整色彩映射參數，強制設定 `vmin=-800` 偏移底線。利用此數學平移技巧，讓 0m 處跳過藍色區段，直接從翠綠色起算，大幅提升了地形圖的專業度與視覺合理性。
